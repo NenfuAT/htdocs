@@ -693,6 +693,72 @@ function disp_weekdata($key, $wp ,$weeks) {
 <?php
 }
 
+function disp_monthsdata($key, $wp ,$months) {
+	global $conn;
+	global $mode;
+	
+	if($weeks==null){
+		$weeks=0;
+	}
+	//表示するデータの位置
+	$st = ($wp - 1) * intval(ADMINPAGESIZE);
+	$tmp = "SELECT
+            CURDATE() + INTERVAL ($weeks * 7) - WEEKDAY(CURDATE()) - 1 DAY as sunday,
+            CURDATE() + INTERVAL ($weeks * 7) - WEEKDAY(CURDATE()) + 5 DAY as saturday,
+            YEAR(CURDATE() + INTERVAL ($weeks * 7) - WEEKDAY(CURDATE()) - 1 DAY) as selected_year";
+	$stof = mysqli_fetch_assoc(db_query($tmp, $conn));
+	$sql = "SELECT * FROM scheduledata WHERE s_begin BETWEEN '{$stof['sunday']}' AND DATE_ADD('{$stof['saturday']}', INTERVAL 1 DAY)";
+		if (strlen($key) > 0) {
+				$sql .= " AND (s_content LIKE '%" . cnv_sqlstr($key) . "%')";
+		}
+	$sql .= " ORDER BY s_begin ASC LIMIT $st, " . intval(ADMINPAGESIZE);
+		//データ抽出
+		$res = db_query($sql, $conn);
+		echo $stof['sunday'] . "~" . $stof['saturday'];
+		if($res->num_rows <= 0) {
+			echo "<p>データは登録されていません";
+		}
+?>
+<?php if($res->num_rows > 0) {?>
+	<table border="1">
+		<tr>
+			<td> </td>
+			<td>内容</td>
+			<td>場所</td>
+			<td>開始日時</td>
+			<td>終了日時</td>
+		</tr>
+		<?php while($row = $res->fetch_array(MYSQLI_ASSOC)) { ?>
+		<tr>
+			<td>
+				<table>
+					<tr>
+						<form method="POST" action="<?=$_SERVER["SCRIPT_NAME"]?>">
+						<td><input type="submit" value="更新"></td>
+						<!-- 管理項目 --> 
+						<input type="hidden" name="act" value="upd">
+						<!-- キー　-->
+						<input type="hidden" name="id" value="<?=$row["id"]?>">
+						</form>
+						<form method="POST" action="<?=$_SERVER["SCRIPT_NAME"]?>">
+						<td width="50%"><input type="submit" value="削除"></td>
+						<!-- 管理項目 -->
+						<input type="hidden" name="act" value="delconf">
+						<!-- キー -->
+						<input type="hidden" name="id" value="<?=$row["id"]?>">
+						</form>
+					</tr>
+				</table>
+			</td>
+			<td><?=cnv_dispstr($row["s_content"])?></td>
+			<td><?=cnv_dispstr($row["s_place"])?></td>
+			<td><?=date("Y/m/d H:i", strtotime($row["s_begin"]))?></td>
+			<td><?=date("Y/m/d H:i", strtotime($row["s_end"]))?></td>
+		</tr>
+		<?php } ?>
+	</table>
+	<?php } ?>
+
 // ========================
 // メニュー表示
 // ========================
