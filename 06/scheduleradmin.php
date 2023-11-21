@@ -758,6 +758,34 @@ function disp_monthsdata($key, $wp ,$months) {
 		<?php } ?>
 	</table>
 	<?php } ?>
+<!-- 前後ページへのリンク　-->
+<?php disp_monthpagenav($key, $wp); ?>
+	<table>
+		<tr>
+				<form method="POST" action="<?=$_SERVER["SCRIPT_NAME"]?>">
+				<td><input type="submit" value="<<前の週"></td>
+				<input type="hidden" name="act" value="src">
+				<input type="hidden" name="weeks" value="<?=$weeks-1?>">
+				<input type="hidden" name="mode" value="<?=$mode=1?>">
+				</form>
+				<form method="POST" action="<?=$_SERVER["SCRIPT_NAME"]?>">
+				<td><input type="submit" value="今週"></td>
+				<input type="hidden" name="act" value="src">
+				<input type="hidden" name="weeks" value="0">
+				<input type="hidden" name="mode" value="<?=$mode=1?>">
+				</form>
+				<form method="POST" action="<?=$_SERVER["SCRIPT_NAME"]?>">
+				<td><input type="submit" value="次の週>>"></td>
+				<input type="hidden" name="act" value="src">
+				<input type="hidden" name="weeks" value="<?=$weeks+1?>">
+				<input type="hidden" name="mode" value="<?=$mode=1?>">
+				</form>
+				
+				
+		</tr>
+	</table>
+<?php
+}
 
 // ========================
 // メニュー表示
