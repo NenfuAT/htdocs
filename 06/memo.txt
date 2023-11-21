@@ -1,0 +1,11 @@
+データベースの仕様 (例)
+
+id int (index, auto inc)
+
+begin datetime
+
+end datetime
+
+place text
+
+content text
