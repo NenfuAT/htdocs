@@ -106,7 +106,10 @@ function screen_src($array){
 	<form method="POST" action="<?=$_SERVER["SCRIPT_NAME"]?>">
 		<table border="0">
 			<tr>
-				<td><input type="text" name="key" value="<?=$key?>"></td>
+				<td>キーワード: <input type="text" name="key" value="<?=$key?>"></td>
+				<?php if ($mode==1) { ?>
+					<td><input type="submit" value="検索" name="sub1"></td>
+				<?php } ?>
 			</tr>
 		</table>
 		<table border="0">
@@ -170,8 +173,6 @@ function screen_src($array){
 		disp_weekdata($key,$p,$weeks);
 	}
 	elseif($mode==2){
-		echo $years;
-		echo $months;
 		disp_monthsdata($key,$p,$years,$months);
 	}
 	?>
@@ -707,19 +708,19 @@ function disp_weekdata($key, $p ,$weeks) {
 				<td><input type="submit" value="<<前の週"></td>
 				<input type="hidden" name="act" value="src">
 				<input type="hidden" name="weeks" value="<?=$weeks-1?>">
-				<input type="hidden" name="mode" value="<?=$mode=1?>">
+				<input type="hidden" name="mode" value="1">
 				</form>
 				<form method="POST" action="<?=$_SERVER["SCRIPT_NAME"]?>">
 				<td><input type="submit" value="今週"></td>
 				<input type="hidden" name="act" value="src">
 				<input type="hidden" name="weeks" value="0">
-				<input type="hidden" name="mode" value="<?=$mode=1?>">
+				<input type="hidden" name="mode" value="1>
 				</form>
 				<form method="POST" action="<?=$_SERVER["SCRIPT_NAME"]?>">
 				<td><input type="submit" value="次の週>>"></td>
 				<input type="hidden" name="act" value="src">
 				<input type="hidden" name="weeks" value="<?=$weeks+1?>">
-				<input type="hidden" name="mode" value="<?=$mode=1?>">
+				<input type="hidden" name="mode" value="1">
 				</form>
 				
 				
@@ -735,6 +736,9 @@ function disp_monthsdata($key, $p ,$years, $months) {
 	$st = ($p - 1) * intval(ADMINPAGESIZE);
 	$formattedMonth = str_pad($months, 2, "0", STR_PAD_LEFT);
 	$sql = "SELECT * FROM scheduledata WHERE YEAR(s_begin) = $years AND MONTH(s_begin) = $formattedMonth";
+	if (strlen($key) > 0) {
+		$sql .= " AND (s_content LIKE '%" . cnv_sqlstr($key) . "%')";
+	}
 	$sql .= " ORDER BY s_begin ASC LIMIT $st, " . intval(ADMINPAGESIZE);
 		//データ抽出
 		$res = db_query($sql, $conn);
@@ -894,7 +898,7 @@ function disp_pagenav($key, $p = 1) {
 				<input type="hidden" name="act" value="src">
 				<input type="hidden" name="p" value="<?=$prev?>">
 				<input type="hidden" name="key" value="<?=$key?>">
-				<input type="hidden" name="mode" value="<?=$mode?>">
+				<input type="hidden" name="mode" value="">
 				</form>
 			<?php } ?>
 			<?php if($recordcount > ($next - 1) * intval(ADMINPAGESIZE)) { ?>
@@ -903,7 +907,7 @@ function disp_pagenav($key, $p = 1) {
 				<input type="hidden" name="act" value="src">
 				<input type="hidden" name="p" value="<?=$next?>">
 				<input type="hidden" name="key" value="<?=$key?>">
-				<input type="hidden" name="mode" value="<?=$mode?>">
+				<input type="hidden" name="mode" value="">
 				</form>
 			<?php } ?>
 		</tr>
@@ -942,7 +946,7 @@ function disp_weekpagenav($key, $p = 1) {
 				<input type="hidden" name="act" value="src">
 				<input type="hidden" name="p" value="<?=$w_prev?>">
 				<input type="hidden" name="key" value="<?=$key?>">
-				<input type="hidden" name="mode" value="<?=$mode?>">
+				<input type="hidden" name="mode" value="1">
 				</form>
 			<?php } ?>
 			<?php if($recordcount > ($w_next - 1) * intval(ADMINPAGESIZE)) { ?>
@@ -951,7 +955,7 @@ function disp_weekpagenav($key, $p = 1) {
 				<input type="hidden" name="act" value="src">
 				<input type="hidden" name="p" value="<?=$w_next?>">
 				<input type="hidden" name="key" value="<?=$key?>">
-				<input type="hidden" name="mode" value="<?=$mode?>">
+				<input type="hidden" name="mode" value="1">
 				</form>
 			<?php } ?>
 		</tr>
@@ -970,7 +974,6 @@ function disp_monthpagenav($key,$years,$months, $p = 1) {
 	//全データ数を取得する
 	$formattedMonth = str_pad($months, 2, '0', STR_PAD_LEFT);
 	$sql = "SELECT COUNT(*) AS cnt FROM scheduledata WHERE YEAR(s_begin) = $years AND MONTH(s_begin)= $formattedMonth";
-	echo $sql;
 	if(isset($key)) {
 		if(strlen($key) > 0) {
 			$sql .= " AND (s_content LIKE '%" . cnv_sqlstr($key) . "%')";
@@ -988,7 +991,7 @@ function disp_monthpagenav($key,$years,$months, $p = 1) {
 				<input type="hidden" name="act" value="src">
 				<input type="hidden" name="p" value="<?=$m_prev?>">
 				<input type="hidden" name="key" value="<?=$key?>">
-				<input type="hidden" name="mode" value="<?=$mode?>">
+				<input type="hidden" name="mode" value="2">
 				</form>
 			<?php } ?>
 			<?php if($recordcount > ($m_next - 1) * intval(ADMINPAGESIZE)) { ?>
@@ -997,7 +1000,7 @@ function disp_monthpagenav($key,$years,$months, $p = 1) {
 				<input type="hidden" name="act" value="src">
 				<input type="hidden" name="p" value="<?=$m_next?>">
 				<input type="hidden" name="key" value="<?=$key?>">
-				<input type="hidden" name="mode" value="<?=$mode?>">
+				<input type="hidden" name="mode" value="2">
 				</form>
 			<?php } ?>
 		</tr>
