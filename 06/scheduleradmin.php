@@ -146,9 +146,8 @@ function screen_src($array){
 					<?php
 					// 1~12月の範囲を表示
 					for ($i = 1; $i <= 12; $i++) {
-						$formattedMonth = str_pad($i, 2, "0", STR_PAD_LEFT);
-						$selected = ($months == $formattedMonth) ? 'selected' : '';
-						echo "<option value=\"$formattedMonth\" $selected>{$i}月</option>";
+						$selected = ($months == $i) ? 'selected' : '';
+						echo "<option value=\"$i\" $selected>{$i}月</option>";
 					}
 					?>
 					</select>
@@ -729,17 +728,13 @@ function disp_weekdata($key, $p ,$weeks) {
 <?php
 }
 
-function disp_monthsdata($key, $p ,$years,$months) {
+function disp_monthsdata($key, $p ,$years, $months) {
 	global $conn;
 	global $mode;
-	
-	if($months==null){
-		$months=0;
-	}
 	//表示するデータの位置
 	$st = ($p - 1) * intval(ADMINPAGESIZE);
-	
-	$sql = "SELECT * FROM scheduledata WHERE YEAR(s_begin) = $years AND MONTH(s_begin) = $months";
+	$formattedMonth = str_pad($months, 2, "0", STR_PAD_LEFT);
+	$sql = "SELECT * FROM scheduledata WHERE YEAR(s_begin) = $years AND MONTH(s_begin) = $formattedMonth";
 	$sql .= " ORDER BY s_begin ASC LIMIT $st, " . intval(ADMINPAGESIZE);
 		//データ抽出
 		$res = db_query($sql, $conn);
@@ -787,29 +782,55 @@ function disp_monthsdata($key, $p ,$years,$months) {
 	</table>
 	<?php } ?>
 <!-- 前後ページへのリンク　-->
-<?php disp_monthpagenav($key, $p); ?>
+<?php disp_monthpagenav($key,$years,$months, $p); ?>
 	<table>
-		<tr>
-				<form method="POST" action="<?=$_SERVER["SCRIPT_NAME"]?>">
-				<td><input type="submit" value="<<前の週"></td>
-				<input type="hidden" name="act" value="src">
-				<input type="hidden" name="weeks" value="<?=$weeks-1?>">
-				<input type="hidden" name="mode" value="<?=$mode=1?>">
+		<tr><?php if ($years != date("Y") - 5 || $months != 1) { ?>
+				<form method="POST" action="<?= $_SERVER["SCRIPT_NAME"] ?>">
+					<?php
+					$tmpM=$months;
+					$tmpY=$years;
+					if ($tmpM == 1) {
+						$tmpY--;
+						$tmpM = 12;
+					} else {
+						$tmpM--;
+					}
+					?>
+					<td><input type="submit" value="<<先月"></td>
+					<input type="hidden" name="act" value="src">
+					<input type="hidden" name="months" value="<?= $tmpM ?>">
+					<input type="hidden" name="years" value="<?= $tmpY ?>">
+					<input type="hidden" name="mode" value="2">
 				</form>
-				<form method="POST" action="<?=$_SERVER["SCRIPT_NAME"]?>">
-				<td><input type="submit" value="今週"></td>
+			<?php } ?>
+
+			<form method="POST" action="<?= $_SERVER["SCRIPT_NAME"] ?>">
+				<td><input type="submit" value="今月"></td>
 				<input type="hidden" name="act" value="src">
-				<input type="hidden" name="weeks" value="0">
-				<input type="hidden" name="mode" value="<?=$mode=1?>">
+				<input type="hidden" name="months" value="<?= date("m") ?>">
+				<input type="hidden" name="years" value="<?= date("Y") ?>">
+				<input type="hidden" name="mode" value="2">
+			</form>
+
+			<?php if ($years != date("Y") + 5 || $months != 12) { ?>
+				<form method="POST" action="<?= $_SERVER["SCRIPT_NAME"] ?>">
+					<?php
+					$tmpM=$months;
+					$tmpY=$years;
+					if ($tmpM == 12) {
+						$tmpY++;
+						$tmpM = 1;
+					} else {
+						$tmpM++;
+					}
+					?>
+					<td><input type="submit" value="来月>>"></td>
+					<input type="hidden" name="act" value="src">
+					<input type="hidden" name="months" value="<?= $tmpM ?>">
+					<input type="hidden" name="years" value="<?= $tmpY ?>">
+					<input type="hidden" name="mode" value="2">
 				</form>
-				<form method="POST" action="<?=$_SERVER["SCRIPT_NAME"]?>">
-				<td><input type="submit" value="次の週>>"></td>
-				<input type="hidden" name="act" value="src">
-				<input type="hidden" name="weeks" value="<?=$weeks+1?>">
-				<input type="hidden" name="mode" value="<?=$mode=1?>">
-				</form>
-				
-				
+			<?php } ?>
 		</tr>
 	</table>
 <?php
@@ -929,6 +950,52 @@ function disp_weekpagenav($key, $p = 1) {
 				<td width="50%"><input type="submit" value="次 >>"></td>
 				<input type="hidden" name="act" value="src">
 				<input type="hidden" name="p" value="<?=$w_next?>">
+				<input type="hidden" name="key" value="<?=$key?>">
+				<input type="hidden" name="mode" value="<?=$mode?>">
+				</form>
+			<?php } ?>
+		</tr>
+	</table>
+<?php
+}
+
+function disp_monthpagenav($key,$years,$months, $p = 1) {
+	global $conn;
+	global $mode;
+	//前後ページ番号を取得
+	$m_prev = $p - 1;
+	$m_prev = ($m_prev < 1) ? : $m_prev;
+	$m_next = $p + 1;
+
+	//全データ数を取得する
+	$formattedMonth = str_pad($months, 2, '0', STR_PAD_LEFT);
+	$sql = "SELECT COUNT(*) AS cnt FROM scheduledata WHERE YEAR(s_begin) = $years AND MONTH(s_begin)= $formattedMonth";
+	echo $sql;
+	if(isset($key)) {
+		if(strlen($key) > 0) {
+			$sql .= " AND (s_content LIKE '%" . cnv_sqlstr($key) . "%')";
+		}
+	}
+	$res = db_query($sql, $conn) or die("データ抽出エラー");
+	$row = $res->fetch_array(MYSQLI_ASSOC);
+	$recordcount = $row["cnt"];
+?>
+	<table>
+		<tr>
+			<?php if ($p > 1) { ?>
+				<form method="POST" action="<?=$_SERVER["SCRIPT_NAME"]?>">
+				<td><input type="submit" value="<< 前"></td>
+				<input type="hidden" name="act" value="src">
+				<input type="hidden" name="p" value="<?=$m_prev?>">
+				<input type="hidden" name="key" value="<?=$key?>">
+				<input type="hidden" name="mode" value="<?=$mode?>">
+				</form>
+			<?php } ?>
+			<?php if($recordcount > ($m_next - 1) * intval(ADMINPAGESIZE)) { ?>
+				<form method="POST" action="<?=$_SERVER["SCRIPT_NAME"]?>">
+				<td width="50%"><input type="submit" value="次 >>"></td>
+				<input type="hidden" name="act" value="src">
+				<input type="hidden" name="p" value="<?=$m_next?>">
 				<input type="hidden" name="key" value="<?=$key?>">
 				<input type="hidden" name="mode" value="<?=$mode?>">
 				</form>
