@@ -83,16 +83,21 @@ function screen_log($array){
 function screen_src($array){
 	//検索キーワード
 	$key = (isset($array["key"])) ? $array["key"] : "";
-	//曜日
+	//曜日検索用
 	$week = isset($_POST["week"]) ? $_POST["week"] : null;
-	$weeks = isset($_POST["weeks"]) ? $_POST["weeks"] : null;
+	//週の割り出し
+	$weeks = isset($_POST["weeks"]) ? $_POST["weeks"] : 1;
+	//月の割り出し
+	$currentMonths = date("m");
+	$months = isset($_POST["months"]) ? $_POST["months"] : $currentMonths;
+	//
+	$currentYear = date("Y");
+	$years = isset($_POST["years"]) ? $_POST["years"] : $currentYear;
 	//表示方法
 	$mode = isset($_POST["mode"]) ? $_POST["mode"] : null;
 	//表示するページ
 	$p = (isset($array["p"])) ? intval($array["p"]) : 1;
-	$wp = (isset($array["wp"])) ? intval($array["wp"]) : 1;
 	$p = ($p < 1) ? 1 : $p;
-	$wp = ($wp < 1) ? 1 : $wp;
 ?>
 	<!-- メニュー -->
 	<?php disp_menu(); ?>
@@ -118,11 +123,37 @@ function screen_src($array){
 					<option value="7" <?= ($week == 7) ? 'selected' : '' ?>>土曜日</option>
 					<option value="1" <?= ($week == 1) ? 'selected' : '' ?>>日曜日</option>
 					</select>
+					<td><input type="submit" value="検索" name="sub1"></td>
 				</td>
 			<?php } ?>
-			</tr>
-			<tr>
-				<td><input type="submit" value="検索" name="sub1"></td>
+			<?php if ($mode==2) { ?>
+				<td>
+					<label for="years">年:</label>
+					<select name="years">
+					<?php
+					// 現在の年から前後5年までの範囲を表示
+					for ($i = $currentYear-5; $i <= $currentYear +5; $i++) {
+						$selected = ($years == $i) ? 'selected' : '';
+						echo "<option value=\"$i\" $selected>{$i}年</option>";
+					}
+					?>
+					</select>
+
+				
+				
+					<label for="months">月:</label>
+					<select name="months">
+					<?php
+					// 1~12月の範囲を表示
+					for ($i = 1; $i <= 12; $i++) {
+						$selected = ($months == $i) ? 'selected' : '';
+						echo "<option value=\"$i\" $selected>{$i}月</option>";
+					}
+					?>
+					</select>
+					<td><input type="submit" value="検索" name="sub1"></td>
+				</td>
+			<?php } ?>
 			</tr>
 		</table>
 		<input type="hidden" name="act" value="src">
@@ -132,12 +163,16 @@ function screen_src($array){
 
 	<!-- 検索結果 --> 
 	<?php 
-	
 	if($mode==null){
 		disp_alldata($key, $p, $week); 
 	}
 	elseif($mode==1){
-		disp_weekdata($key,$wp,$weeks);
+		disp_weekdata($key,$p,$weeks);
+	}
+	elseif($mode==2){
+		echo $years;
+		echo $months;
+		disp_monthsdata($key,$p,$years,$months);
 	}
 	?>
 
@@ -599,7 +634,7 @@ function disp_alldata($key, $p ,$week) {
 <?php
 }
 
-function disp_weekdata($key, $wp ,$weeks) {
+function disp_weekdata($key, $p ,$weeks) {
 	global $conn;
 	global $mode;
 	
@@ -607,7 +642,7 @@ function disp_weekdata($key, $wp ,$weeks) {
 		$weeks=0;
 	}
 	//表示するデータの位置
-	$st = ($wp - 1) * intval(ADMINPAGESIZE);
+	$st = ($p - 1) * intval(ADMINPAGESIZE);
 	$tmp = "SELECT
             CURDATE() + INTERVAL ($weeks * 7) - WEEKDAY(CURDATE()) - 1 DAY as sunday,
             CURDATE() + INTERVAL ($weeks * 7) - WEEKDAY(CURDATE()) + 5 DAY as saturday,
@@ -665,7 +700,7 @@ function disp_weekdata($key, $wp ,$weeks) {
 	</table>
 	<?php } ?>
 	<!-- 前後ページへのリンク　-->
-	<?php disp_weekpagenav($key, $wp); ?>
+	<?php disp_weekpagenav($key, $p); ?>
 	<table>
 		<tr>
 				<form method="POST" action="<?=$_SERVER["SCRIPT_NAME"]?>">
@@ -688,6 +723,114 @@ function disp_weekdata($key, $wp ,$weeks) {
 				</form>
 				
 				
+		</tr>
+	</table>
+<?php
+}
+
+function disp_monthsdata($key, $p ,$years, $months) {
+	global $conn;
+	global $mode;
+	//表示するデータの位置
+	$st = ($p - 1) * intval(ADMINPAGESIZE);
+	$formattedMonth = str_pad($months, 2, "0", STR_PAD_LEFT);
+	$sql = "SELECT * FROM scheduledata WHERE YEAR(s_begin) = $years AND MONTH(s_begin) = $formattedMonth";
+	$sql .= " ORDER BY s_begin ASC LIMIT $st, " . intval(ADMINPAGESIZE);
+		//データ抽出
+		$res = db_query($sql, $conn);
+		if($res->num_rows <= 0) {
+			echo "<p>データは登録されていません";
+		}
+?>
+<?php if($res->num_rows > 0) {?>
+	<table border="1">
+		<tr>
+			<td> </td>
+			<td>内容</td>
+			<td>場所</td>
+			<td>開始日時</td>
+			<td>終了日時</td>
+		</tr>
+		<?php while($row = $res->fetch_array(MYSQLI_ASSOC)) { ?>
+		<tr>
+			<td>
+				<table>
+					<tr>
+						<form method="POST" action="<?=$_SERVER["SCRIPT_NAME"]?>">
+						<td><input type="submit" value="更新"></td>
+						<!-- 管理項目 --> 
+						<input type="hidden" name="act" value="upd">
+						<!-- キー　-->
+						<input type="hidden" name="id" value="<?=$row["id"]?>">
+						</form>
+						<form method="POST" action="<?=$_SERVER["SCRIPT_NAME"]?>">
+						<td width="50%"><input type="submit" value="削除"></td>
+						<!-- 管理項目 -->
+						<input type="hidden" name="act" value="delconf">
+						<!-- キー -->
+						<input type="hidden" name="id" value="<?=$row["id"]?>">
+						</form>
+					</tr>
+				</table>
+			</td>
+			<td><?=cnv_dispstr($row["s_content"])?></td>
+			<td><?=cnv_dispstr($row["s_place"])?></td>
+			<td><?=date("Y/m/d H:i", strtotime($row["s_begin"]))?></td>
+			<td><?=date("Y/m/d H:i", strtotime($row["s_end"]))?></td>
+		</tr>
+		<?php } ?>
+	</table>
+	<?php } ?>
+<!-- 前後ページへのリンク　-->
+<?php disp_monthpagenav($key,$years,$months, $p); ?>
+	<table>
+		<tr><?php if ($years != date("Y") - 5 || $months != 1) { ?>
+				<form method="POST" action="<?= $_SERVER["SCRIPT_NAME"] ?>">
+					<?php
+					$tmpM=$months;
+					$tmpY=$years;
+					if ($tmpM == 1) {
+						$tmpY--;
+						$tmpM = 12;
+					} else {
+						$tmpM--;
+					}
+					?>
+					<td><input type="submit" value="<<先月"></td>
+					<input type="hidden" name="act" value="src">
+					<input type="hidden" name="months" value="<?= $tmpM ?>">
+					<input type="hidden" name="years" value="<?= $tmpY ?>">
+					<input type="hidden" name="mode" value="2">
+				</form>
+			<?php } ?>
+
+			<form method="POST" action="<?= $_SERVER["SCRIPT_NAME"] ?>">
+				<td><input type="submit" value="今月"></td>
+				<input type="hidden" name="act" value="src">
+				<input type="hidden" name="months" value="<?= date("m") ?>">
+				<input type="hidden" name="years" value="<?= date("Y") ?>">
+				<input type="hidden" name="mode" value="2">
+			</form>
+
+			<?php if ($years != date("Y") + 5 || $months != 12) { ?>
+				<form method="POST" action="<?= $_SERVER["SCRIPT_NAME"] ?>">
+					<?php
+					$tmpM=$months;
+					$tmpY=$years;
+					if ($tmpM == 12) {
+						$tmpY++;
+						$tmpM = 1;
+					} else {
+						$tmpM++;
+					}
+					?>
+					<td><input type="submit" value="来月>>"></td>
+					<input type="hidden" name="act" value="src">
+					<input type="hidden" name="months" value="<?= $tmpM ?>">
+					<input type="hidden" name="years" value="<?= $tmpY ?>">
+					<input type="hidden" name="mode" value="2">
+				</form>
+			<?php } ?>
 		</tr>
 	</table>
 <?php
@@ -768,7 +911,7 @@ function disp_pagenav($key, $p = 1) {
 <?php
 }
 
-function disp_weekpagenav($key, $wp = 1) {
+function disp_weekpagenav($key, $p = 1) {
 	global $conn;
 	global $weeks;
 	global $mode;
@@ -776,9 +919,9 @@ function disp_weekpagenav($key, $wp = 1) {
 		$weeks=0;
 	}
 	//前後ページ番号を取得
-	$w_prev = $wp - 1;
+	$w_prev = $p - 1;
 	$w_prev = ($w_prev < 1) ? : $w_prev;
-	$w_next = $wp + 1;
+	$w_next = $p + 1;
 
 	//全データ数を取得する
 	$sql = "SELECT COUNT(*) AS cnt FROM scheduledata WHERE s_begin >= CURDATE()+($weeks*7) - INTERVAL WEEKDAY(CURDATE()+($weeks*7))+1 DAY AND s_begin < DATE_ADD(CURDATE()+($weeks*7) - INTERVAL WEEKDAY(CURDATE()+($weeks*7))+1 DAY, INTERVAL 1 WEEK)";
@@ -793,11 +936,11 @@ function disp_weekpagenav($key, $wp = 1) {
 ?>
 	<table>
 		<tr>
-			<?php if ($wp > 1) { ?>
+			<?php if ($p > 1) { ?>
 				<form method="POST" action="<?=$_SERVER["SCRIPT_NAME"]?>">
 				<td><input type="submit" value="<< 前"></td>
 				<input type="hidden" name="act" value="src">
-				<input type="hidden" name="wp" value="<?=$w_prev?>">
+				<input type="hidden" name="p" value="<?=$w_prev?>">
 				<input type="hidden" name="key" value="<?=$key?>">
 				<input type="hidden" name="mode" value="<?=$mode?>">
 				</form>
@@ -806,7 +949,53 @@ function disp_weekpagenav($key, $wp = 1) {
 				<form method="POST" action="<?=$_SERVER["SCRIPT_NAME"]?>">
 				<td width="50%"><input type="submit" value="次 >>"></td>
 				<input type="hidden" name="act" value="src">
-				<input type="hidden" name="wp" value="<?=$w_next?>">
+				<input type="hidden" name="p" value="<?=$w_next?>">
+				<input type="hidden" name="key" value="<?=$key?>">
+				<input type="hidden" name="mode" value="<?=$mode?>">
+				</form>
+			<?php } ?>
+		</tr>
+	</table>
+<?php
+}
+
+function disp_monthpagenav($key,$years,$months, $p = 1) {
+	global $conn;
+	global $mode;
+	//前後ページ番号を取得
+	$m_prev = $p - 1;
+	$m_prev = ($m_prev < 1) ? : $m_prev;
+	$m_next = $p + 1;
+
+	//全データ数を取得する
+	$formattedMonth = str_pad($months, 2, '0', STR_PAD_LEFT);
+	$sql = "SELECT COUNT(*) AS cnt FROM scheduledata WHERE YEAR(s_begin) = $years AND MONTH(s_begin)= $formattedMonth";
+	echo $sql;
+	if(isset($key)) {
+		if(strlen($key) > 0) {
+			$sql .= " AND (s_content LIKE '%" . cnv_sqlstr($key) . "%')";
+		}
+	}
+	$res = db_query($sql, $conn) or die("データ抽出エラー");
+	$row = $res->fetch_array(MYSQLI_ASSOC);
+	$recordcount = $row["cnt"];
+?>
+	<table>
+		<tr>
+			<?php if ($p > 1) { ?>
+				<form method="POST" action="<?=$_SERVER["SCRIPT_NAME"]?>">
+				<td><input type="submit" value="<< 前"></td>
+				<input type="hidden" name="act" value="src">
+				<input type="hidden" name="p" value="<?=$m_prev?>">
+				<input type="hidden" name="key" value="<?=$key?>">
+				<input type="hidden" name="mode" value="<?=$mode?>">
+				</form>
+			<?php } ?>
+			<?php if($recordcount > ($m_next - 1) * intval(ADMINPAGESIZE)) { ?>
+				<form method="POST" action="<?=$_SERVER["SCRIPT_NAME"]?>">
+				<td width="50%"><input type="submit" value="次 >>"></td>
+				<input type="hidden" name="act" value="src">
+				<input type="hidden" name="p" value="<?=$m_next?>">
 				<input type="hidden" name="key" value="<?=$key?>">
 				<input type="hidden" name="mode" value="<?=$mode?>">
 				</form>
