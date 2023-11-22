@@ -83,16 +83,21 @@ function screen_log($array){
 function screen_src($array){
 	//検索キーワード
 	$key = (isset($array["key"])) ? $array["key"] : "";
-	//曜日
+	//曜日検索用
 	$week = isset($_POST["week"]) ? $_POST["week"] : null;
-	$weeks = isset($_POST["weeks"]) ? $_POST["weeks"] : null;
+	//週の割り出し
+	$weeks = isset($_POST["weeks"]) ? $_POST["weeks"] : 1;
+	//月の割り出し
+	$currentMonths = date("m");
+	$months = isset($_POST["months"]) ? $_POST["months"] : $currentMonths;
+	//
+	$currentYear = date("Y");
+	$years = isset($_POST["years"]) ? $_POST["years"] : $currentYear;
 	//表示方法
 	$mode = isset($_POST["mode"]) ? $_POST["mode"] : null;
 	//表示するページ
 	$p = (isset($array["p"])) ? intval($array["p"]) : 1;
-	$wp = (isset($array["wp"])) ? intval($array["wp"]) : 1;
 	$p = ($p < 1) ? 1 : $p;
-	$wp = ($wp < 1) ? 1 : $wp;
 ?>
 	<!-- メニュー -->
 	<?php disp_menu(); ?>
@@ -118,11 +123,38 @@ function screen_src($array){
 					<option value="7" <?= ($week == 7) ? 'selected' : '' ?>>土曜日</option>
 					<option value="1" <?= ($week == 1) ? 'selected' : '' ?>>日曜日</option>
 					</select>
+					<td><input type="submit" value="検索" name="sub1"></td>
 				</td>
 			<?php } ?>
-			</tr>
-			<tr>
-				<td><input type="submit" value="検索" name="sub1"></td>
+			<?php if ($mode==2) { ?>
+				<td>
+					<label for="years">年:</label>
+					<select name="years">
+					<?php
+					// 現在の年から前後5年までの範囲を表示
+					for ($i = $currentYear-5; $i <= $currentYear +5; $i++) {
+						$selected = ($years == $i) ? 'selected' : '';
+						echo "<option value=\"$i\" $selected>{$i}年</option>";
+					}
+					?>
+					</select>
+
+				
+				
+					<label for="months">月:</label>
+					<select name="months">
+					<?php
+					// 1~12月の範囲を表示
+					for ($i = 1; $i <= 12; $i++) {
+						$formattedMonth = str_pad($i, 2, "0", STR_PAD_LEFT);
+						$selected = ($months == $formattedMonth) ? 'selected' : '';
+						echo "<option value=\"$formattedMonth\" $selected>{$i}月</option>";
+					}
+					?>
+					</select>
+					<td><input type="submit" value="検索" name="sub1"></td>
+				</td>
+			<?php } ?>
 			</tr>
 		</table>
 		<input type="hidden" name="act" value="src">
@@ -132,12 +164,16 @@ function screen_src($array){
 
 	<!-- 検索結果 --> 
 	<?php 
-	
 	if($mode==null){
 		disp_alldata($key, $p, $week); 
 	}
 	elseif($mode==1){
-		disp_weekdata($key,$wp,$weeks);
+		disp_weekdata($key,$p,$weeks);
+	}
+	elseif($mode==2){
+		echo $years;
+		echo $months;
+		disp_monthsdata($key,$p,$years,$months);
 	}
 	?>
 
@@ -599,7 +635,7 @@ function disp_alldata($key, $p ,$week) {
 <?php
 }
 
-function disp_weekdata($key, $wp ,$weeks) {
+function disp_weekdata($key, $p ,$weeks) {
 	global $conn;
 	global $mode;
 	
@@ -607,7 +643,7 @@ function disp_weekdata($key, $wp ,$weeks) {
 		$weeks=0;
 	}
 	//表示するデータの位置
-	$st = ($wp - 1) * intval(ADMINPAGESIZE);
+	$st = ($p - 1) * intval(ADMINPAGESIZE);
 	$tmp = "SELECT
             CURDATE() + INTERVAL ($weeks * 7) - WEEKDAY(CURDATE()) - 1 DAY as sunday,
             CURDATE() + INTERVAL ($weeks * 7) - WEEKDAY(CURDATE()) + 5 DAY as saturday,
@@ -665,7 +701,7 @@ function disp_weekdata($key, $wp ,$weeks) {
 	</table>
 	<?php } ?>
 	<!-- 前後ページへのリンク　-->
-	<?php disp_weekpagenav($key, $wp); ?>
+	<?php disp_weekpagenav($key, $p); ?>
 	<table>
 		<tr>
 				<form method="POST" action="<?=$_SERVER["SCRIPT_NAME"]?>">
@@ -693,28 +729,20 @@ function disp_weekdata($key, $wp ,$weeks) {
 <?php
 }
 
-function disp_monthsdata($key, $wp ,$months) {
+function disp_monthsdata($key, $p ,$years,$months) {
 	global $conn;
 	global $mode;
 	
-	if($weeks==null){
-		$weeks=0;
+	if($months==null){
+		$months=0;
 	}
 	//表示するデータの位置
-	$st = ($wp - 1) * intval(ADMINPAGESIZE);
-	$tmp = "SELECT
-            CURDATE() + INTERVAL ($weeks * 7) - WEEKDAY(CURDATE()) - 1 DAY as sunday,
-            CURDATE() + INTERVAL ($weeks * 7) - WEEKDAY(CURDATE()) + 5 DAY as saturday,
-            YEAR(CURDATE() + INTERVAL ($weeks * 7) - WEEKDAY(CURDATE()) - 1 DAY) as selected_year";
-	$stof = mysqli_fetch_assoc(db_query($tmp, $conn));
-	$sql = "SELECT * FROM scheduledata WHERE s_begin BETWEEN '{$stof['sunday']}' AND DATE_ADD('{$stof['saturday']}', INTERVAL 1 DAY)";
-		if (strlen($key) > 0) {
-				$sql .= " AND (s_content LIKE '%" . cnv_sqlstr($key) . "%')";
-		}
+	$st = ($p - 1) * intval(ADMINPAGESIZE);
+	
+	$sql = "SELECT * FROM scheduledata WHERE YEAR(s_begin) = $years AND MONTH(s_begin) = $months";
 	$sql .= " ORDER BY s_begin ASC LIMIT $st, " . intval(ADMINPAGESIZE);
 		//データ抽出
 		$res = db_query($sql, $conn);
-		echo $stof['sunday'] . "~" . $stof['saturday'];
 		if($res->num_rows <= 0) {
 			echo "<p>データは登録されていません";
 		}
@@ -759,7 +787,7 @@ function disp_monthsdata($key, $wp ,$months) {
 	</table>
 	<?php } ?>
 <!-- 前後ページへのリンク　-->
-<?php disp_monthpagenav($key, $wp); ?>
+<?php disp_monthpagenav($key, $p); ?>
 	<table>
 		<tr>
 				<form method="POST" action="<?=$_SERVER["SCRIPT_NAME"]?>">
@@ -862,7 +890,7 @@ function disp_pagenav($key, $p = 1) {
 <?php
 }
 
-function disp_weekpagenav($key, $wp = 1) {
+function disp_weekpagenav($key, $p = 1) {
 	global $conn;
 	global $weeks;
 	global $mode;
@@ -870,9 +898,9 @@ function disp_weekpagenav($key, $wp = 1) {
 		$weeks=0;
 	}
 	//前後ページ番号を取得
-	$w_prev = $wp - 1;
+	$w_prev = $p - 1;
 	$w_prev = ($w_prev < 1) ? : $w_prev;
-	$w_next = $wp + 1;
+	$w_next = $p + 1;
 
 	//全データ数を取得する
 	$sql = "SELECT COUNT(*) AS cnt FROM scheduledata WHERE s_begin >= CURDATE()+($weeks*7) - INTERVAL WEEKDAY(CURDATE()+($weeks*7))+1 DAY AND s_begin < DATE_ADD(CURDATE()+($weeks*7) - INTERVAL WEEKDAY(CURDATE()+($weeks*7))+1 DAY, INTERVAL 1 WEEK)";
@@ -887,11 +915,11 @@ function disp_weekpagenav($key, $wp = 1) {
 ?>
 	<table>
 		<tr>
-			<?php if ($wp > 1) { ?>
+			<?php if ($p > 1) { ?>
 				<form method="POST" action="<?=$_SERVER["SCRIPT_NAME"]?>">
 				<td><input type="submit" value="<< 前"></td>
 				<input type="hidden" name="act" value="src">
-				<input type="hidden" name="wp" value="<?=$w_prev?>">
+				<input type="hidden" name="p" value="<?=$w_prev?>">
 				<input type="hidden" name="key" value="<?=$key?>">
 				<input type="hidden" name="mode" value="<?=$mode?>">
 				</form>
@@ -900,7 +928,7 @@ function disp_weekpagenav($key, $wp = 1) {
 				<form method="POST" action="<?=$_SERVER["SCRIPT_NAME"]?>">
 				<td width="50%"><input type="submit" value="次 >>"></td>
 				<input type="hidden" name="act" value="src">
-				<input type="hidden" name="wp" value="<?=$w_next?>">
+				<input type="hidden" name="p" value="<?=$w_next?>">
 				<input type="hidden" name="key" value="<?=$key?>">
 				<input type="hidden" name="mode" value="<?=$mode?>">
 				</form>
