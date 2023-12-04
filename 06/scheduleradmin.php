@@ -86,7 +86,7 @@ function screen_src($array){
 	//曜日検索用
 	$week = isset($_POST["week"]) ? $_POST["week"] : null;
 	//週の割り出し
-	$weeks = isset($_POST["weeks"]) ? $_POST["weeks"] : 1;
+	$weeks = isset($_POST["weeks"]) ? $_POST["weeks"] : null;
 	//月の割り出し
 	$currentMonths = date("m");
 	$months = isset($_POST["months"]) ? $_POST["months"] : $currentMonths;
@@ -405,7 +405,7 @@ function screen_delconf($array){
 			</tr>
 			<tr>
 				<td> </td>
-				<td><input type="submit" value="削除実行実行" name="sub1"></td>
+				<td><input type="submit" value="削除実行" name="sub1"></td>
 			</tr>
 		</table>
 		<input type="hidden" name="id" value="<?=$row["id"]?>">
@@ -638,7 +638,6 @@ function disp_alldata($key, $p ,$week) {
 function disp_weekdata($key, $p ,$weeks) {
 	global $conn;
 	global $mode;
-	
 	if($weeks==null){
 		$weeks=0;
 	}
@@ -714,7 +713,7 @@ function disp_weekdata($key, $p ,$weeks) {
 				<td><input type="submit" value="今週"></td>
 				<input type="hidden" name="act" value="src">
 				<input type="hidden" name="weeks" value="0">
-				<input type="hidden" name="mode" value="1>
+				<input type="hidden" name="mode" value="1">
 				</form>
 				<form method="POST" action="<?=$_SERVER["SCRIPT_NAME"]?>">
 				<td><input type="submit" value="次の週>>"></td>
